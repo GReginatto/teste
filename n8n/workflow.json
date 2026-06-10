@@ -29,18 +29,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "x-api-key",
-              "value": "={{ $env.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -49,21 +41,21 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 300,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Você é especialista em marketing digital para profissionais de saúde, direito e odontologia no Instagram. Com base na legenda abaixo, sugira entre 10 e 15 hashtags relevantes em português e inglês. Retorne APENAS as hashtags separadas por espaço, sem numeração, sem explicações, sem markdown.\\n\\nLegenda: {{ $json.legenda }}\\n\\nTipo de conteúdo: {{ $json.tipo_conteudo }}\\nCliente/área: {{ $json.cliente }}\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Você é especialista em marketing digital para profissionais de saúde, direito e odontologia no Instagram. Com base na legenda abaixo, sugira entre 10 e 15 hashtags relevantes em português e inglês. Retorne APENAS as hashtags separadas por espaço, sem numeração, sem explicações, sem markdown.\\n\\nLegenda: {{ $json.legenda }}\\n\\nTipo de conteúdo: {{ $json.tipo_conteudo }}\\nCliente/área: {{ $json.cliente }}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"maxOutputTokens\": 300,\n    \"temperature\": 0.7\n  }\n}",
         "options": {
           "timeout": 30000
         }
       },
       "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-      "name": "Gerar Hashtags com Claude IA",
+      "name": "Gerar Hashtags com Gemini IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [680, 300],
-      "notes": "Chama a API da Anthropic (Claude Haiku) para gerar hashtags. Configure ANTHROPIC_API_KEY nas variáveis de ambiente do N8N. Para simular sem API key: substitua este nó por um nó 'Set' com hashtags fixas."
+      "notes": "Chama a API do Google Gemini 1.5 Flash (gratuita) para gerar hashtags. Configure GEMINI_API_KEY nas variáveis de ambiente do N8N. Obtenha a chave em aistudio.google.com."
     },
     {
       "parameters": {
-        "jsCode": "// Processa a resposta da Claude e monta o objeto final\nconst aiResponse = $input.first().json;\nconst taskData = $('Extrair Dados da Tarefa').first().json;\n\nlet hashtags = '';\ntry {\n  // Extrai texto da resposta da Anthropic API\n  hashtags = aiResponse.content[0].text.trim();\n} catch (e) {\n  // Fallback com hashtags genéricas se a IA não responder\n  hashtags = '#marketing #instagram #saude #profissional #conteudo #branding #autoridade #medico #dentista #advogado';\n  console.log('FALLBACK: usando hashtags padrão. Erro:', e.message);\n}\n\n// Garante que todas as tags começam com #\nhashtags = hashtags\n  .split(/\\s+/)\n  .filter(t => t.length > 0)\n  .map(t => t.startsWith('#') ? t : '#' + t)\n  .join(' ');\n\nreturn [{\n  json: {\n    ...taskData,\n    hashtags,\n    ia_model: 'claude-haiku-4-5-20251001',\n    full_caption: taskData.legenda + '\\n\\n' + hashtags,\n    ia_tokens_used: aiResponse.usage?.output_tokens || 0\n  }\n}];"
+        "jsCode": "// Processa a resposta do Gemini e monta o objeto final\nconst aiResponse = $input.first().json;\nconst taskData = $('Extrair Dados da Tarefa').first().json;\n\nlet hashtags = '';\ntry {\n  // Gemini retorna: candidates[0].content.parts[0].text\n  hashtags = aiResponse.candidates[0].content.parts[0].text.trim();\n} catch (e) {\n  // Fallback com hashtags genéricas se a IA não responder\n  hashtags = '#marketing #instagram #saude #profissional #conteudo #branding #autoridade #medico #dentista #advogado';\n  console.log('FALLBACK: usando hashtags padrão. Erro:', e.message);\n}\n\n// Garante que todas as tags começam com #\nhashtags = hashtags\n  .split(/\\s+/)\n  .filter(t => t.length > 0)\n  .map(t => t.startsWith('#') ? t : '#' + t)\n  .join(' ');\n\nconst tokensUsed = aiResponse.usageMetadata?.candidatesTokenCount || 0;\n\nreturn [{\n  json: {\n    ...taskData,\n    hashtags,\n    ia_model: 'gemini-1.5-flash',\n    full_caption: taskData.legenda + '\\n\\n' + hashtags,\n    ia_tokens_used: tokensUsed\n  }\n}];"
       },
       "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
       "name": "Processar Resposta da IA",
@@ -141,14 +133,14 @@
       "main": [
         [
           {
-            "node": "Gerar Hashtags com Claude IA",
+            "node": "Gerar Hashtags com Gemini IA",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gerar Hashtags com Claude IA": {
+    "Gerar Hashtags com Gemini IA": {
       "main": [
         [
           {
