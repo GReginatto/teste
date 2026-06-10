@@ -2,25 +2,19 @@
   "name": "BrioLab - ClickUp Aprovado → Hashtags IA → Supabase → Notificação",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "clickup-task-approved",
-        "responseMode": "onReceived",
-        "options": {}
-      },
-      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "name": "Webhook Trigger (ClickUp)",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "parameters": {},
+      "id": "a0b1c2d3-e4f5-6789-abcd-ef0123456789",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
       "position": [200, 300],
-      "webhookId": "f1e2d3c4-b5a6-7890-abcd-123456789abc",
-      "notes": "Trigger manual simulando webhook do ClickUp. Em produção, configure o ClickUp para enviar POST para esta URL quando o status mudar para 'aprovado'."
+      "notes": "Trigger manual simulando o evento do ClickUp. Em produção: substituir por nó Webhook apontado para a URL configurada nas Automações do ClickUp (status muda para 'aprovado'). O payload simulado no próximo nó replica exatamente a estrutura real do ClickUp."
     },
     {
       "parameters": {
-        "jsCode": "// Extrai e normaliza campos do payload do ClickUp\n// O ClickUp envia um objeto 'task' com custom_fields como array\nconst body = $input.first().json.body || $input.first().json;\nconst task = body.task || body;\nconst customFields = task.custom_fields || [];\n\n// Helper: busca campo personalizado por nome (case-insensitive)\nconst getCustomField = (name) => {\n  const field = customFields.find(\n    f => f.name?.toLowerCase().includes(name.toLowerCase())\n  );\n  if (!field) return '';\n  // Lida com campos do tipo dropdown (type_config) e texto simples\n  if (field.type === 'drop_down') {\n    return field.type_config?.options?.find(o => o.orderindex === field.value)?.name || '';\n  }\n  return field.value || '';\n};\n\nreturn [{\n  json: {\n    task_id: task.id || ('TASK_' + Date.now()),\n    task_name: task.name || 'Postagem sem título',\n    description: task.description || '',\n    legenda: getCustomField('legenda') || task.description || 'Legenda não informada',\n    data_postagem: getCustomField('data') || new Date().toISOString().split('T')[0],\n    tipo_conteudo: getCustomField('tipo') || 'feed',\n    cliente: task.list?.name || task.folder?.name || 'Cliente não identificado',\n    status: task.status?.status || 'aprovado',\n    processed_at: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Simula o payload que o ClickUp envia via webhook quando status muda para 'aprovado'.\n// Em produção, substituir por:\n//   const body = $input.first().json.body || $input.first().json;\n//   const task = body.task || body;\n//   const customFields = task.custom_fields || [];\n//   const getField = (name) => customFields.find(f => f.name?.toLowerCase().includes(name.toLowerCase()))?.value || '';\n\nreturn [{\n  json: {\n    task_id:       'TASK_TEST_001',\n    task_name:     'Post Instagram - Dr. Joao',\n    description:   'Cuide do seu coracao.',\n    legenda:       'Prevencao cardiovascular salva vidas. Pequenos habitos fazem diferenca todos os dias.',\n    data_postagem: '2026-06-15',\n    tipo_conteudo: 'feed',\n    cliente:       'Cardiologia',\n    status:        'aprovado',\n    processed_at:  new Date().toISOString()\n  }\n}];"
       },
-      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "id": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
       "name": "Extrair Dados da Tarefa",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -29,7 +23,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -46,18 +40,18 @@
           "timeout": 30000
         }
       },
-      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "id": "c2d3e4f5-a6b7-8901-cdef-123456789012",
       "name": "Gerar Hashtags com Gemini IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [680, 300],
-      "notes": "Chama a API do Google Gemini 1.5 Flash (gratuita) para gerar hashtags. Configure GEMINI_API_KEY nas variáveis de ambiente do N8N. Obtenha a chave em aistudio.google.com."
+      "notes": "Google Gemini 2.0 Flash Lite — tier gratuito (aistudio.google.com). Configure GEMINI_API_KEY como variável de ambiente antes de iniciar o N8N. Modelo escolhido por ser o mais leve do tier gratuito com suporte a generateContent."
     },
     {
       "parameters": {
-        "jsCode": "// Processa a resposta do Gemini e monta o objeto final\nconst aiResponse = $input.first().json;\nconst taskData = $('Extrair Dados da Tarefa').first().json;\n\nlet hashtags = '';\ntry {\n  // Gemini retorna: candidates[0].content.parts[0].text\n  hashtags = aiResponse.candidates[0].content.parts[0].text.trim();\n} catch (e) {\n  // Fallback com hashtags genéricas se a IA não responder\n  hashtags = '#marketing #instagram #saude #profissional #conteudo #branding #autoridade #medico #dentista #advogado';\n  console.log('FALLBACK: usando hashtags padrão. Erro:', e.message);\n}\n\n// Garante que todas as tags começam com #\nhashtags = hashtags\n  .split(/\\s+/)\n  .filter(t => t.length > 0)\n  .map(t => t.startsWith('#') ? t : '#' + t)\n  .join(' ');\n\nconst tokensUsed = aiResponse.usageMetadata?.candidatesTokenCount || 0;\n\nreturn [{\n  json: {\n    ...taskData,\n    hashtags,\n    ia_model: 'gemini-1.5-flash',\n    full_caption: taskData.legenda + '\\n\\n' + hashtags,\n    ia_tokens_used: tokensUsed\n  }\n}];"
+        "jsCode": "// Extrai as hashtags da resposta do Gemini e monta o objeto final.\n// Inclui fallback: se a IA falhar por qualquer motivo, usa hashtags genéricas\n// para não interromper o fluxo (a postagem ainda será salva e notificada).\n\nconst aiResponse = $input.first().json;\nconst taskData = $('Extrair Dados da Tarefa').first().json;\n\nlet hashtags = '';\ntry {\n  hashtags = aiResponse.candidates[0].content.parts[0].text.trim();\n} catch (e) {\n  hashtags = '#marketing #instagram #saude #profissional #conteudo #branding #autoridade #medico #dentista #advogado';\n  console.log('FALLBACK ativado — hashtags padrão. Erro original:', e.message);\n}\n\n// Normaliza: garante que todas as tags começam com #\nhashtags = hashtags\n  .split(/\\s+/)\n  .filter(t => t.length > 1)\n  .map(t => t.startsWith('#') ? t : '#' + t)\n  .join(' ');\n\nconst tokensUsed = aiResponse.usageMetadata?.candidatesTokenCount || 0;\n\nreturn [{\n  json: {\n    ...taskData,\n    hashtags,\n    ia_model: 'gemini-2.0-flash-lite',\n    full_caption: taskData.legenda + '\\n\\n' + hashtags,\n    ia_tokens_used: tokensUsed\n  }\n}];"
       },
-      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "id": "d3e4f5a6-b7c8-9012-defa-234567890123",
       "name": "Processar Resposta da IA",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -89,16 +83,31 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"task_id\": \"{{ $json.task_id }}\",\n  \"task_name\": \"{{ $json.task_name }}\",\n  \"legenda\": \"{{ $json.legenda }}\",\n  \"hashtags\": \"{{ $json.hashtags }}\",\n  \"full_caption\": \"{{ $json.full_caption }}\",\n  \"tipo_conteudo\": \"{{ $json.tipo_conteudo }}\",\n  \"data_postagem\": \"{{ $json.data_postagem }}\",\n  \"cliente\": \"{{ $json.cliente }}\",\n  \"status\": \"aprovado\",\n  \"ia_model\": \"{{ $json.ia_model }}\",\n  \"ia_tokens_used\": {{ $json.ia_tokens_used }},\n  \"processed_at\": \"{{ $json.processed_at }}\"\n}",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "task_id",        "value": "={{ $json.task_id }}" },
+            { "name": "task_name",      "value": "={{ $json.task_name }}" },
+            { "name": "legenda",        "value": "={{ $json.legenda }}" },
+            { "name": "hashtags",       "value": "={{ $json.hashtags }}" },
+            { "name": "full_caption",   "value": "={{ $json.full_caption }}" },
+            { "name": "tipo_conteudo",  "value": "={{ $json.tipo_conteudo }}" },
+            { "name": "data_postagem",  "value": "={{ $json.data_postagem }}" },
+            { "name": "cliente",        "value": "={{ $json.cliente }}" },
+            { "name": "status",         "value": "aprovado" },
+            { "name": "ia_model",       "value": "={{ $json.ia_model }}" },
+            { "name": "ia_tokens_used", "value": "={{ $json.ia_tokens_used }}" },
+            { "name": "processed_at",   "value": "={{ $json.processed_at }}" }
+          ]
+        },
         "options": {}
       },
-      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "id": "e4f5a6b7-c8d9-0123-efab-345678901234",
       "name": "Salvar no Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1160, 300],
-      "notes": "Insere registro na tabela 'postagens' do Supabase via REST API. Configure SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis de ambiente. SQL para criar a tabela está no README."
+      "notes": "Insere na tabela 'postagens' via REST API do Supabase. Usa 'keypair' body para evitar problemas de escape em campos com quebra de linha (full_caption). RLS deve estar desabilitado: ALTER TABLE postagens DISABLE ROW LEVEL SECURITY."
     },
     {
       "parameters": {
@@ -109,69 +118,29 @@
         "jsonBody": "={\n  \"text\": \"Nova postagem aprovada e processada!\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": { \"type\": \"plain_text\", \"text\": \"Postagem Aprovada\" }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Cliente:*\\n{{ $('Processar Resposta da IA').first().json.cliente }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Tipo:*\\n{{ $('Processar Resposta da IA').first().json.tipo_conteudo }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Data de Postagem:*\\n{{ $('Processar Resposta da IA').first().json.data_postagem }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Task ID:*\\n{{ $('Processar Resposta da IA').first().json.task_id }}\" }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": { \"type\": \"mrkdwn\", \"text\": \"*Hashtags geradas:*\\n{{ $('Processar Resposta da IA').first().json.hashtags }}\" }\n    }\n  ],\n  \"timestamp\": \"{{ $now }}\"\n}",
         "options": {}
       },
-      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "id": "f5a6b7c8-d9e0-1234-fabc-456789012345",
       "name": "Notificação (Slack/Telegram/Webhook)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1400, 300],
-      "notes": "Envia notificação em formato compatível com Slack, Discord ou qualquer webhook. Configure NOTIFICATION_WEBHOOK_URL. Para Telegram: troque a URL pela Bot API do Telegram e ajuste o body para o formato esperado."
+      "notes": "Payload em formato Slack Block Kit — compatível com Slack, Discord (via webhook) e qualquer serviço que aceite JSON. Configure NOTIFICATION_WEBHOOK_URL. Para testes rápidos: webhook.site gera uma URL descartável."
     }
   ],
   "connections": {
-    "Webhook Trigger (ClickUp)": {
-      "main": [
-        [
-          {
-            "node": "Extrair Dados da Tarefa",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Manual Trigger": {
+      "main": [[{ "node": "Extrair Dados da Tarefa", "type": "main", "index": 0 }]]
     },
     "Extrair Dados da Tarefa": {
-      "main": [
-        [
-          {
-            "node": "Gerar Hashtags com Gemini IA",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Gerar Hashtags com Gemini IA", "type": "main", "index": 0 }]]
     },
     "Gerar Hashtags com Gemini IA": {
-      "main": [
-        [
-          {
-            "node": "Processar Resposta da IA",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Processar Resposta da IA", "type": "main", "index": 0 }]]
     },
     "Processar Resposta da IA": {
-      "main": [
-        [
-          {
-            "node": "Salvar no Supabase",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Salvar no Supabase", "type": "main", "index": 0 }]]
     },
     "Salvar no Supabase": {
-      "main": [
-        [
-          {
-            "node": "Notificação (Slack/Telegram/Webhook)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Notificação (Slack/Telegram/Webhook)", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
@@ -186,8 +155,8 @@
   "id": "briolab-workflow-001",
   "tags": [
     {
-      "createdAt": "2026-06-09T00:00:00.000Z",
-      "updatedAt": "2026-06-09T00:00:00.000Z",
+      "createdAt": "2026-06-10T00:00:00.000Z",
+      "updatedAt": "2026-06-10T00:00:00.000Z",
       "id": "1",
       "name": "briolab"
     }
