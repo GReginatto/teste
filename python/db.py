@@ -1,14 +1,3 @@
-"""
-Camada de banco de dados — BrioLab Desafio 2
-
-Backend selecionado via variável de ambiente DATABASE_BACKEND:
-  - "sqlite"   (padrão) → arquivo local briolab_leads.db, zero dependências
-  - "supabase" → Supabase via supabase-py (pip install supabase)
-  - "postgres" → PostgreSQL direto via psycopg2 (pip install psycopg2-binary)
-
-Todas as funções públicas têm a mesma assinatura independente do backend.
-"""
-
 import os
 import sqlite3
 import logging
