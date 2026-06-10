@@ -1,0 +1,32 @@
+# Variáveis de ambiente — NUNCA subir credenciais
+.env
+.env.local
+.env.*.local
+
+# Banco de dados local gerado em runtime
+python/*.db
+python/*.db-shm
+python/*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# N8N (dados locais de instâncias)
+n8n/.n8n/
+n8n/node_modules/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp

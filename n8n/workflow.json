@@ -1,0 +1,203 @@
+{
+  "name": "BrioLab - ClickUp Aprovado → Hashtags IA → Supabase → Notificação",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clickup-task-approved",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Webhook Trigger (ClickUp)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "f1e2d3c4-b5a6-7890-abcd-123456789abc",
+      "notes": "Trigger manual simulando webhook do ClickUp. Em produção, configure o ClickUp para enviar POST para esta URL quando o status mudar para 'aprovado'."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai e normaliza campos do payload do ClickUp\n// O ClickUp envia um objeto 'task' com custom_fields como array\nconst body = $input.first().json.body || $input.first().json;\nconst task = body.task || body;\nconst customFields = task.custom_fields || [];\n\n// Helper: busca campo personalizado por nome (case-insensitive)\nconst getCustomField = (name) => {\n  const field = customFields.find(\n    f => f.name?.toLowerCase().includes(name.toLowerCase())\n  );\n  if (!field) return '';\n  // Lida com campos do tipo dropdown (type_config) e texto simples\n  if (field.type === 'drop_down') {\n    return field.type_config?.options?.find(o => o.orderindex === field.value)?.name || '';\n  }\n  return field.value || '';\n};\n\nreturn [{\n  json: {\n    task_id: task.id || ('TASK_' + Date.now()),\n    task_name: task.name || 'Postagem sem título',\n    description: task.description || '',\n    legenda: getCustomField('legenda') || task.description || 'Legenda não informada',\n    data_postagem: getCustomField('data') || new Date().toISOString().split('T')[0],\n    tipo_conteudo: getCustomField('tipo') || 'feed',\n    cliente: task.list?.name || task.folder?.name || 'Cliente não identificado',\n    status: task.status?.status || 'aprovado',\n    processed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Extrair Dados da Tarefa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 300,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Você é especialista em marketing digital para profissionais de saúde, direito e odontologia no Instagram. Com base na legenda abaixo, sugira entre 10 e 15 hashtags relevantes em português e inglês. Retorne APENAS as hashtags separadas por espaço, sem numeração, sem explicações, sem markdown.\\n\\nLegenda: {{ $json.legenda }}\\n\\nTipo de conteúdo: {{ $json.tipo_conteudo }}\\nCliente/área: {{ $json.cliente }}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Gerar Hashtags com Claude IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "notes": "Chama a API da Anthropic (Claude Haiku) para gerar hashtags. Configure ANTHROPIC_API_KEY nas variáveis de ambiente do N8N. Para simular sem API key: substitua este nó por um nó 'Set' com hashtags fixas."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa a resposta da Claude e monta o objeto final\nconst aiResponse = $input.first().json;\nconst taskData = $('Extrair Dados da Tarefa').first().json;\n\nlet hashtags = '';\ntry {\n  // Extrai texto da resposta da Anthropic API\n  hashtags = aiResponse.content[0].text.trim();\n} catch (e) {\n  // Fallback com hashtags genéricas se a IA não responder\n  hashtags = '#marketing #instagram #saude #profissional #conteudo #branding #autoridade #medico #dentista #advogado';\n  console.log('FALLBACK: usando hashtags padrão. Erro:', e.message);\n}\n\n// Garante que todas as tags começam com #\nhashtags = hashtags\n  .split(/\\s+/)\n  .filter(t => t.length > 0)\n  .map(t => t.startsWith('#') ? t : '#' + t)\n  .join(' ');\n\nreturn [{\n  json: {\n    ...taskData,\n    hashtags,\n    ia_model: 'claude-haiku-4-5-20251001',\n    full_caption: taskData.legenda + '\\n\\n' + hashtags,\n    ia_tokens_used: aiResponse.usage?.output_tokens || 0\n  }\n}];"
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "Processar Resposta da IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/postagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task_id\": \"{{ $json.task_id }}\",\n  \"task_name\": \"{{ $json.task_name }}\",\n  \"legenda\": \"{{ $json.legenda }}\",\n  \"hashtags\": \"{{ $json.hashtags }}\",\n  \"full_caption\": \"{{ $json.full_caption }}\",\n  \"tipo_conteudo\": \"{{ $json.tipo_conteudo }}\",\n  \"data_postagem\": \"{{ $json.data_postagem }}\",\n  \"cliente\": \"{{ $json.cliente }}\",\n  \"status\": \"aprovado\",\n  \"ia_model\": \"{{ $json.ia_model }}\",\n  \"ia_tokens_used\": {{ $json.ia_tokens_used }},\n  \"processed_at\": \"{{ $json.processed_at }}\"\n}",
+        "options": {}
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "Salvar no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 300],
+      "notes": "Insere registro na tabela 'postagens' do Supabase via REST API. Configure SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis de ambiente. SQL para criar a tabela está no README."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOTIFICATION_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Nova postagem aprovada e processada!\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": { \"type\": \"plain_text\", \"text\": \"Postagem Aprovada\" }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        { \"type\": \"mrkdwn\", \"text\": \"*Cliente:*\\n{{ $('Processar Resposta da IA').first().json.cliente }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Tipo:*\\n{{ $('Processar Resposta da IA').first().json.tipo_conteudo }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Data de Postagem:*\\n{{ $('Processar Resposta da IA').first().json.data_postagem }}\" },\n        { \"type\": \"mrkdwn\", \"text\": \"*Task ID:*\\n{{ $('Processar Resposta da IA').first().json.task_id }}\" }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": { \"type\": \"mrkdwn\", \"text\": \"*Hashtags geradas:*\\n{{ $('Processar Resposta da IA').first().json.hashtags }}\" }\n    }\n  ],\n  \"timestamp\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "name": "Notificação (Slack/Telegram/Webhook)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 300],
+      "notes": "Envia notificação em formato compatível com Slack, Discord ou qualquer webhook. Configure NOTIFICATION_WEBHOOK_URL. Para Telegram: troque a URL pela Bot API do Telegram e ajuste o body para o formato esperado."
+    }
+  ],
+  "connections": {
+    "Webhook Trigger (ClickUp)": {
+      "main": [
+        [
+          {
+            "node": "Extrair Dados da Tarefa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Dados da Tarefa": {
+      "main": [
+        [
+          {
+            "node": "Gerar Hashtags com Claude IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Hashtags com Claude IA": {
+      "main": [
+        [
+          {
+            "node": "Processar Resposta da IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Resposta da IA": {
+      "main": [
+        [
+          {
+            "node": "Salvar no Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar no Supabase": {
+      "main": [
+        [
+          {
+            "node": "Notificação (Slack/Telegram/Webhook)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "briolab-desafio-tecnico-2026"
+  },
+  "id": "briolab-workflow-001",
+  "tags": [
+    {
+      "createdAt": "2026-06-09T00:00:00.000Z",
+      "updatedAt": "2026-06-09T00:00:00.000Z",
+      "id": "1",
+      "name": "briolab"
+    }
+  ]
+}

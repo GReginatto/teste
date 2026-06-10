@@ -1,0 +1,15 @@
+# Desafio 2 - BrioLab Backend Python
+#
+# Backend padrão (SQLite) roda sem nenhuma dependência externa.
+# Instale os extras apenas se trocar o DATABASE_BACKEND.
+
+# HTTP requests — necessário para ativar chamada real ao ClickUp (Etapa 3)
+requests==2.32.3
+
+# ── Backend: Supabase ────────────────────────────────────────────────────────
+# Ativar com: DATABASE_BACKEND=supabase
+# supabase==2.10.0
+
+# ── Backend: PostgreSQL direto ───────────────────────────────────────────────
+# Ativar com: DATABASE_BACKEND=postgres  +  DATABASE_URL=postgresql://...
+# psycopg2-binary==2.9.9
