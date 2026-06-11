@@ -47,15 +47,15 @@ Formulário web       →  main.py valida + salva leads  →  ClickUp (tarefa cr
 
 ### Screenshots
 
-**Canvas do workflow:**
+**Canvas do workflow completo (7 nós) — nó IF "Status é aprovado?" filtra status antes de chamar a IA:**
 
 ![Workflow Canvas](n8n/screenshots/01.png)
 
-**Histórico de execuções (painel Executions):**
+**Execuções bem-sucedidas — painel Executions com múltiplos testes e workflow de 7 nós visível:**
 
 ![Execuções](n8n/screenshots/02.png)
 
-**Tabela `postagens` no Supabase — registros gerados pelos 4 cenários de teste:**
+**Tabela `postagens` no Supabase — registros acumulados de múltiplas execuções de teste (task_ids repetidos evidenciam a necessidade da constraint UNIQUE já implementada no schema):**
 
 ![Supabase postagens](n8n/screenshots/03.png)
 
