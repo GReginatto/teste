@@ -4,7 +4,6 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Carrega .env da raiz do projeto se existir (sem dependência de python-dotenv)
 _env_file = Path(__file__).parent.parent / ".env"
 if _env_file.exists():
     for _line in _env_file.read_text().splitlines():
@@ -121,9 +120,7 @@ def _supabase_update_task(lead_id: int, task_id: str) -> None:
     client.table("leads").update({"clickup_task_id": task_id}).eq("id", lead_id).execute()
 
 
-# ─────────────────────────────────────────────
 # BACKEND: POSTGRESQL (psycopg2)
-# ─────────────────────────────────────────────
 #
 # Requer: pip install psycopg2-binary
 # Variável de ambiente:
@@ -177,9 +174,7 @@ def _pg_update_task(lead_id: int, task_id: str) -> None:
         conn.close()
 
 
-# ─────────────────────────────────────────────
 # INTERFACE PÚBLICA — mesma API para todos os backends
-# ─────────────────────────────────────────────
 
 def insert_lead(data: dict) -> int:
     """
