@@ -12,8 +12,10 @@ Automação & IA | Junho 2026
 │   ├── workflow.json              # Workflow N8N exportado
 │   └── screenshots/
 │       ├── 01.png                 # Canvas do workflow completo
-│       ├── 02.png                 # Execução bem-sucedida (Executions)
-│       └── 03.png                 # Registro inserido no Supabase
+│       ├── 02.png                 # Histórico de execuções (painel Executions)
+│       ├── 03.png                 # Tabela postagens no Supabase (Desafio 1)
+│       ├── 04.png                 # Tabela leads no Supabase (Desafio 2)
+│       └── 05.png                 # Notificação recebida no webhook.site
 └── python/
     ├── main.py                    # Script principal
     ├── db.py                      # Camada de banco de dados
@@ -31,17 +33,17 @@ Automação & IA | Junho 2026
 
 ![Workflow Canvas](n8n/screenshots/01.png)
 
-**Execução bem-sucedida (todos os nós em verde):**
+**Histórico de execuções (painel Executions):**
 
-![Execução](n8n/screenshots/02.png)
+![Execuções](n8n/screenshots/02.png)
 
-**Registro salvo no Supabase:**
+**Tabela `postagens` no Supabase — registros gerados pelos 4 cenários de teste:**
 
-![Supabase](n8n/screenshots/03.png)
+![Supabase postagens](n8n/screenshots/03.png)
 
-**Notificação recebida no webhook.site:**
+**Notificação recebida no webhook.site — payload Block Kit com hashtags geradas pela IA:**
 
-![Webhook Notification](n8n/screenshots/04.png)
+![Webhook Notification](n8n/screenshots/05.png)
 
 ---
 
@@ -156,6 +158,14 @@ n8n
 ---
 
 ## Desafio 2 — Backend Python
+
+### Screenshots
+
+**Tabela `leads` no Supabase — registros salvos pelos 5 casos válidos do script:**
+
+![Supabase leads](n8n/screenshots/04.png)
+
+---
 
 ### O fluxo
 
