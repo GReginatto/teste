@@ -1,6 +1,6 @@
 # Desafio Técnico — BrioLab
 
-
+Automação & IA | Junho 2026
 
 ---
 
@@ -101,8 +101,9 @@ O desafio permite explicitamente: *"Se não tiver conta no ClickUp, use um webho
 
 Contexto: Considerando que as APIs mencionadas exigem a contratação de um plano pago para sua utilização, sem oferecer uma camada gratuita (free tier), optou-se pela adoção do Google Gemini como alternativa para o desenvolvimento da solução.
 
-Resultado: Google Gemini 2.5 Flash Lite via Google AI Studio = gratuito, sem cartão de crédito, com suporte completo a `generateContent`. O modelo é mais que suficiente para geração de hashtags.
+Resultado: Google Gemini 2.5 Flash Lite via Google AI Studio — gratuito, sem cartão de crédito, com suporte completo a `generateContent`. O modelo é mais que suficiente para geração de hashtags.
 
+Próximo passo: em produção, o provedor de IA poderia ser configurável via variável de ambiente (`AI_PROVIDER=gemini|openai|anthropic`), trocando apenas o nó HTTP Request.
 
 ---
 
@@ -132,7 +133,9 @@ A chamada à IA pode falhar por rate limit (o free tier tem entre 15-30 solicita
 
 Contexto: o ClickUp pode chamar o webhook para qualquer mudança de status (em andamento, revisão, cancelado) não só "aprovado". Sem filtro, o fluxo chamaria a IA e salvaria dados para tarefas ainda não prontas. Além disso, o ClickUp pode reenviar o mesmo evento por falha de rede.
 
-Decisão: o nó IF logo após "Extrair Dados da Tarefa" verifica `status === 'aprovado'` qualquer outro status encerra o fluxo ali sem custo. No nó Supabase, `Prefer: resolution=merge-duplicates` combinado com `UNIQUE(task_id)` no schema garante idempotência: o mesmo task_id processado duas vezes faz upsert, não duplicata.
+Decisão: o nó IF logo após "Extrair Dados da Tarefa" verifica `status === 'aprovado'` — qualquer outro status encerra o fluxo ali sem custo. No nó Supabase, `Prefer: resolution=merge-duplicates` combinado com `UNIQUE(task_id)` no schema garante idempotência: o mesmo task_id processado duas vezes faz upsert, não duplicata.
+
+Próximo passo: em produção, o nó IF leria `$json.task.status.status` diretamente do payload real do ClickUp, sem depender do campo simulado.
 
 ---
 
@@ -170,7 +173,7 @@ n8n
 
 **4.** Workflows → + → Import from file → `n8n/workflow.json`
 
-**5.** Clicar em **Test workflow** — todos os 6 nós devem ficar verdes
+**5.** Clicar em **Test workflow** — todos os 7 nós devem ficar verdes
 
 ---
 
@@ -228,6 +231,8 @@ DATABASE_BACKEND=sqlite    → zero dependências, roda em qualquer máquina
 DATABASE_BACKEND=supabase  → pip install supabase
 DATABASE_BACKEND=postgres  → pip install psycopg2-binary
 ```
+
+Próximo passo: em produção, o `db.py` poderia virar uma classe abstrata (`LeadRepository`) com implementações separadas — mais testável e extensível.
 
 ---
 
@@ -317,7 +322,41 @@ Contexto: durante os testes iterativos do workflow, o Gemini retornou 429 após 
 
 Tentativa: achei que havia configurado a API key errada ou estava usando o tier errado.
 
-Resultado: o free tier tem 15 RPM (requisições por minuto) não é por dia, é por minuto. Aguardar 60 segundos resolveu. Isso reforçou a decisão de implementar o fallback de hashtags no nó "Processar Resposta da IA": se o rate limit for atingido em produção, o fluxo não para.
+Resultado: o free tier tem 15 RPM (requisições por minuto) — não é por dia, é por minuto. Aguardar 60 segundos resolveu. Isso reforçou a decisão de implementar o fallback de hashtags no nó "Processar Resposta da IA": se o rate limit for atingido em produção, o fluxo não para.
 
 ---
 
+## O que faria diferente com mais tempo
+
+### Desafio 1 — N8N
+
+**Retry com backoff no nó Gemini**
+
+O free tier do Gemini tem limite de 15 RPM. Em pico de aprovações simultâneas, o nó vai falhar com 429. O N8N HTTP Request suporta retry nativo — configuraria 3 tentativas com intervalo exponencial (1s, 4s, 16s) antes de acionar o fallback de hashtags.
+
+**Segurança no Supabase (RLS)**
+
+Desabilitei o Row Level Security para simplificar o desenvolvimento. Em produção, usaria a `service_role key` no servidor (nunca exposta no cliente) com RLS habilitado — e criaria policies para permitir apenas `INSERT` na tabela `postagens` via essa key.
+
+---
+
+### Desafio 2 — Python
+
+**FastAPI com validação Pydantic**
+
+Transformar o script em `POST /leads` com modelo Pydantic: tipos fortes, validação automática, documentação OpenAPI gerada. A lógica de `validar()` e `db.py` seria aproveitada sem mudança.
+
+**Testes automatizados**
+
+Os 9 casos em `CASOS` são testes manuais. Migraria para pytest com:
+- Unit tests para `_formatar_telefone` e `_normalizar_email` (edge cases: +55, DDI estrangeiro, emails com subdomínio)
+- Integration test com SQLite `:memory:` para o pipeline completo
+- Mock para o ClickUp (já que é simulado, testar que o payload gerado tem os campos certos)
+
+**Fila para o ClickUp**
+
+A criação de tarefa no ClickUp é a etapa mais frágil: API externa, timeout, rate limit. Em produção, moveria para uma fila de background (Celery + Redis ou ARQ). O endpoint responderia imediatamente com `202 Accepted` e o ClickUp seria chamado de forma assíncrona — com retry automático em caso de falha.
+
+---
+
+*Desenvolvido como parte do processo seletivo BrioLab — Junho 2026*
