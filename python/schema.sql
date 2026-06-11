@@ -1,6 +1,3 @@
--- Schema BrioLab — compatível com PostgreSQL e Supabase
--- Execute no SQL Editor do Supabase antes de rodar qualquer integração
-
 -- ─────────────────────────────────────────────
 -- Desafio 2: leads do formulário de diagnóstico
 -- ─────────────────────────────────────────────
@@ -50,11 +47,6 @@ CREATE TABLE IF NOT EXISTS postagens (
 CREATE INDEX IF NOT EXISTS idx_postagens_cliente
     ON postagens (cliente);
 
--- ─────────────────────────────────────────────
--- RLS: desabilitado para inserções via anon key
--- Em produção: usar service_role key server-side
--- ou criar policies específicas por operação
--- ─────────────────────────────────────────────
 
 ALTER TABLE leads     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE postagens DISABLE ROW LEVEL SECURITY;
