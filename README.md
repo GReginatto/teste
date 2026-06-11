@@ -133,6 +133,16 @@ A chamada à IA pode falhar por rate limit (o free tier tem 15-30 RPM), timeout 
 
 ---
 
+**Por que o nó IF "Status é aprovado?" e o upsert no Supabase?**
+
+Contexto: o ClickUp pode chamar o webhook para qualquer mudança de status (em andamento, revisão, cancelado) — não só "aprovado". Sem filtro, o fluxo chamaria a IA e salvaria dados para tarefas ainda não prontas. Além disso, o ClickUp pode reenviar o mesmo evento por falha de rede.
+
+Decisão: o nó IF logo após "Extrair Dados da Tarefa" verifica `status === 'aprovado'` — qualquer outro status encerra o fluxo ali sem custo. No nó Supabase, `Prefer: resolution=merge-duplicates` combinado com `UNIQUE(task_id)` no schema garante idempotência: o mesmo task_id processado duas vezes faz upsert, não duplicata.
+
+Próximo passo: em produção, o nó IF leria `$json.task.status.status` diretamente do payload real do ClickUp, sem depender do campo simulado.
+
+---
+
 ### Como rodar
 
 **Pré-requisitos:**
@@ -146,11 +156,20 @@ A chamada à IA pode falhar por rate limit (o free tier tem 15-30 RPM), timeout 
 **2. Iniciar o N8N com as variáveis de ambiente:**
 
 ```powershell
-# PowerShell
+# Windows — PowerShell
 $env:GEMINI_API_KEY="sua_chave_gemini"
 $env:SUPABASE_URL="https://xxxx.supabase.co"
 $env:SUPABASE_ANON_KEY="sua_publishable_key"
 $env:NOTIFICATION_WEBHOOK_URL="https://webhook.site/seu-id"
+n8n
+```
+
+```bash
+# Linux / Mac — Bash
+export GEMINI_API_KEY="sua_chave_gemini"
+export SUPABASE_URL="https://xxxx.supabase.co"
+export SUPABASE_ANON_KEY="sua_publishable_key"
+export NOTIFICATION_WEBHOOK_URL="https://webhook.site/seu-id"
 n8n
 ```
 
@@ -241,10 +260,21 @@ Dados digitados em formulários chegam em qualquer capitalização ("dr. JOAO", 
 
 ### Como rodar
 
-```powershell
+```bash
+# Linux / Mac — Bash
 cd python
+pip install -r requirements.txt
+python main.py
 
-# SQLite local — sem dependências extras
+# Com Supabase (executar schema.sql no Supabase SQL Editor antes):
+# pip install supabase
+# DATABASE_BACKEND=supabase SUPABASE_URL=https://xxxx.supabase.co SUPABASE_KEY=sua_anon_key python main.py
+```
+
+```powershell
+# Windows — PowerShell
+cd python
+pip install -r requirements.txt
 python main.py
 
 # Com Supabase (executar schema.sql no Supabase SQL Editor antes):
@@ -307,10 +337,6 @@ Resultado: o free tier tem 15 RPM (requisições por minuto) — não é por dia
 
 ### Desafio 1 — N8N
 
-**Idempotência no webhook do ClickUp**
-
-O ClickUp pode reenviar o mesmo webhook por falha de rede. Hoje, cada execução insere uma nova linha em `postagens` com o mesmo `task_id`. Em produção, o nó Supabase deveria usar `upsert` (header `Prefer: resolution=merge-duplicates`) e a tabela teria uma constraint `UNIQUE(task_id)`. Sem isso, o cliente pode receber notificações duplicadas.
-
 **Retry com backoff no nó Gemini**
 
 O free tier do Gemini tem limite de 15 RPM. Em pico de aprovações simultâneas, o nó vai falhar com 429. O N8N HTTP Request suporta retry nativo — configuraria 3 tentativas com intervalo exponencial (1s, 4s, 16s) antes de acionar o fallback de hashtags.
@@ -318,10 +344,6 @@ O free tier do Gemini tem limite de 15 RPM. Em pico de aprovações simultâneas
 **Segurança no Supabase (RLS)**
 
 Desabilitei o Row Level Security para simplificar o desenvolvimento. Em produção, usaria a `service_role key` no servidor (nunca exposta no cliente) com RLS habilitado — e criaria policies para permitir apenas `INSERT` na tabela `postagens` via essa key.
-
-**Webhook Trigger + validação de status**
-
-Hoje confio que o payload sempre chega com `status: aprovado`. O ClickUp pode chamar o webhook para outros eventos. Adicionaria um nó `IF` logo após o trigger para verificar `{{ $json.task.status.status === 'aprovado' }}` antes de continuar o fluxo.
 
 ---
 

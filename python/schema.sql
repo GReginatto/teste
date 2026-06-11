@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_clickup_task
 
 CREATE TABLE IF NOT EXISTS postagens (
     id              BIGSERIAL    PRIMARY KEY,
-    task_id         TEXT         NOT NULL,
+    task_id         TEXT         NOT NULL UNIQUE,
     task_name       TEXT         NOT NULL,
     legenda         TEXT,
     hashtags        TEXT,
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS postagens (
     created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_postagens_task_id
-    ON postagens (task_id);
+-- UNIQUE em task_id cria índice implícito — não é necessário CREATE INDEX separado.
+-- A constraint garante idempotência: reenvio do mesmo webhook faz upsert, não duplicata.
 
 CREATE INDEX IF NOT EXISTS idx_postagens_cliente
     ON postagens (cliente);

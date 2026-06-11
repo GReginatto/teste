@@ -75,11 +75,19 @@ def _formatar_telefone(raw: str) -> str:
 
 
 def _normalizar_email(raw: str) -> str:
-    """Lowercase + strip. Valida formato com regex."""
+    """Normaliza e valida e-mail. Usa email-validator (RFC 5322 completo) com fallback para regex."""
     normalized = raw.strip().lower()
-    if not re.match(r"^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$", normalized):
-        raise ValueError(f"E-mail invalido: '{raw}'")
-    return normalized
+    try:
+        from email_validator import validate_email, EmailNotValidError
+        try:
+            info = validate_email(normalized, check_deliverability=False)
+            return info.normalized
+        except EmailNotValidError as exc:
+            raise ValueError(f"E-mail invalido: '{raw}'") from exc
+    except ImportError:
+        if not re.match(r"^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$", normalized):
+            raise ValueError(f"E-mail invalido: '{raw}'")
+        return normalized
 
 
 def validar(raw: dict) -> LeadData:

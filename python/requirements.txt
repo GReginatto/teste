@@ -6,6 +6,10 @@
 # HTTP requests — necessário para ativar chamada real ao ClickUp (Etapa 3)
 requests==2.32.3
 
+# Validação de e-mail RFC 5322 completo (suporta Unicode, subdomínios, edge cases)
+# Fallback automático para regex se não instalado
+email-validator==2.2.0
+
 # ── Backend: Supabase ────────────────────────────────────────────────────────
 # Ativar com: DATABASE_BACKEND=supabase
 # supabase==2.10.0

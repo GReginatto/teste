@@ -22,6 +22,26 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "aprovado"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Status é aprovado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "notes": "Valida que apenas tarefas com status 'aprovado' continuam o fluxo. Em produção com Webhook Trigger do ClickUp, este nó descarta eventos de outros status antes de chamar a IA — evitando custos desnecessários e chamadas duplicadas."
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
@@ -44,7 +64,7 @@
       "name": "Gerar Hashtags com Gemini IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300],
+      "position": [920, 300],
       "notes": "Google Gemini 2.5 Flash Lite — tier gratuito (aistudio.google.com). Configure GEMINI_API_KEY como variável de ambiente antes de iniciar o N8N. Modelo escolhido por ser o mais leve do tier gratuito com suporte a generateContent."
     },
     {
@@ -55,7 +75,7 @@
       "name": "Processar Resposta da IA",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 300]
+      "position": [1160, 300]
     },
     {
       "parameters": {
@@ -78,7 +98,7 @@
             },
             {
               "name": "Prefer",
-              "value": "return=representation"
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
         },
@@ -106,7 +126,7 @@
       "name": "Salvar no Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1160, 300],
+      "position": [1400, 300],
       "notes": "Insere na tabela 'postagens' via REST API do Supabase. Usa 'keypair' body para evitar problemas de escape em campos com quebra de linha (full_caption). RLS deve estar desabilitado: ALTER TABLE postagens DISABLE ROW LEVEL SECURITY."
     },
     {
@@ -122,7 +142,7 @@
       "name": "Notificação (Slack/Telegram/Webhook)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1400, 300],
+      "position": [1640, 300],
       "notes": "Payload em formato Slack Block Kit — compatível com Slack, Discord (via webhook) e qualquer serviço que aceite JSON. Configure NOTIFICATION_WEBHOOK_URL. Para testes rápidos: webhook.site gera uma URL descartável."
     }
   ],
@@ -131,7 +151,13 @@
       "main": [[{ "node": "Extrair Dados da Tarefa", "type": "main", "index": 0 }]]
     },
     "Extrair Dados da Tarefa": {
-      "main": [[{ "node": "Gerar Hashtags com Gemini IA", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Status é aprovado?", "type": "main", "index": 0 }]]
+    },
+    "Status é aprovado?": {
+      "main": [
+        [{ "node": "Gerar Hashtags com Gemini IA", "type": "main", "index": 0 }],
+        []
+      ]
     },
     "Gerar Hashtags com Gemini IA": {
       "main": [[{ "node": "Processar Resposta da IA", "type": "main", "index": 0 }]]
