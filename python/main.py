@@ -19,7 +19,6 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# Carrega .env da raiz do projeto se existir
 _env_file = Path(__file__).parent.parent / ".env"
 if _env_file.exists():
     for _line in _env_file.read_text().splitlines():
@@ -38,9 +37,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────
 # ETAPA 1 — VALIDAÇÃO E NORMALIZAÇÃO
-# ─────────────────────────────────────────────
 
 @dataclass
 class LeadData:
@@ -129,10 +126,8 @@ def validar(raw: dict) -> LeadData:
     lead.email_norm = email_norm
     return lead
 
-
 # ─────────────────────────────────────────────
 # ETAPA 3 — INTEGRAÇÃO COM CLICKUP
-# ─────────────────────────────────────────────
 #
 # DECISÃO: A API do ClickUp requer Bearer Token e IDs de lista específicos de
 # cada workspace. Como este desafio não inclui credenciais reais, a chamada é
@@ -253,13 +248,9 @@ def processar_formulario(raw: dict) -> dict:
         },
     }
 
-
-# ─────────────────────────────────────────────
 # CASOS DE TESTE
-# ─────────────────────────────────────────────
-
 CASOS = [
-    # ── Casos validos ──────────────────────────────────────────────────────────
+    # Casos validos 
     {
         "_desc": "Valido -- cardiologista, com DDI +55 e parenteses",
         "nome": "dr. JOAO SILVA",
@@ -300,7 +291,7 @@ CASOS = [
         "especialidade": "Dermatologia",
         "principal_desafio": "Posicionar expertise em procedimentos esteticos e diferenciar do concorrente de baixo custo",
     },
-    # ── Casos de falha esperada ────────────────────────────────────────────────
+    # ── Casos de falha esperada ─
     {
         "_desc": "Falha -- multiplos campos obrigatorios ausentes",
         "nome": "Maria",
