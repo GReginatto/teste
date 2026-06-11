@@ -251,24 +251,50 @@ def processar_formulario(raw: dict) -> dict:
 # ─────────────────────────────────────────────
 
 CASOS = [
+    # ── Casos validos ──────────────────────────────────────────────────────────
     {
-        "_desc": "Caso valido -- todos os campos corretos",
+        "_desc": "Valido -- cardiologista, com DDI +55 e parenteses",
         "nome": "dr. JOAO SILVA",
         "telefone": "+55 (11) 99988-7766",
         "email": "JOAO.SILVA@GMAIL.COM",
         "especialidade": "Cardiologia",
-        "principal_desafio": "Aumentar visibilidade online e atrair pacientes qualificados",
+        "principal_desafio": "Aumentar visibilidade online e atrair pacientes qualificados nas redes sociais",
     },
     {
-        "_desc": "Caso valido -- dentista, telefone celular sem DDI",
+        "_desc": "Valido -- dentista, celular sem DDI, nome e email em minusculas",
         "nome": "dra. ana lima",
         "telefone": "21987654321",
         "email": "ana.lima@clinicasorriso.com.br",
         "especialidade": "Odontologia",
-        "principal_desafio": "Construir autoridade no Instagram e converter seguidores em pacientes",
+        "principal_desafio": "Construir autoridade no Instagram e converter seguidores em pacientes de alto ticket",
     },
     {
-        "_desc": "Falha -- campos obrigatorios ausentes",
+        "_desc": "Valido -- advogada, telefone com espacos e traco",
+        "nome": "BEATRIZ FONTES",
+        "telefone": "48 9 9654-3210",
+        "email": "beatriz.fontes@escritoriobf.adv.br",
+        "especialidade": "Direito Tributario",
+        "principal_desafio": "Gerar leads B2B qualificados pelo LinkedIn. Empresas nao me encontram online.",
+    },
+    {
+        "_desc": "Valido -- psicologo, telefone fixo 8 digitos",
+        "nome": "renato OLIVEIRA",
+        "telefone": "(31) 3322-1100",
+        "email": "renato.psi@clinicamente.com.br",
+        "especialidade": "Psicologia",
+        "principal_desafio": "Desmistificar a terapia online e atrair pacientes que nunca consideraram buscar ajuda",
+    },
+    {
+        "_desc": "Valido -- dermatologista, email com subdominio",
+        "nome": "dra. lucia mendes",
+        "telefone": "51994321098",
+        "email": "dra.lucia@clinicapele.med.br",
+        "especialidade": "Dermatologia",
+        "principal_desafio": "Posicionar expertise em procedimentos esteticos e diferenciar do concorrente de baixo custo",
+    },
+    # ── Casos de falha esperada ────────────────────────────────────────────────
+    {
+        "_desc": "Falha -- multiplos campos obrigatorios ausentes",
         "nome": "Maria",
         "telefone": "",
         "email": "",
@@ -284,12 +310,20 @@ CASOS = [
         "principal_desafio": "Gerar leads qualificados pelo LinkedIn",
     },
     {
-        "_desc": "Falha -- e-mail malformado",
-        "nome": "Dra. Beatriz Fontes",
+        "_desc": "Falha -- e-mail malformado (sem dominio)",
+        "nome": "Dra. Fernanda Rocha",
         "telefone": "48996543210",
-        "email": "beatriz@",
-        "especialidade": "Dermatologia",
+        "email": "fernanda@",
+        "especialidade": "Ginecologia",
         "principal_desafio": "Aumentar engajamento no Instagram",
+    },
+    {
+        "_desc": "Falha -- telefone e e-mail invalidos simultaneamente",
+        "nome": "Dr. Carlos Menez",
+        "telefone": "99",
+        "email": "nao-e-um-email",
+        "especialidade": "Neurologia",
+        "principal_desafio": "Construir presenca digital forte",
     },
 ]
 

@@ -31,7 +31,7 @@ Automação & IA | Junho 2026
 
 ![Workflow Canvas](n8n/screenshots/01.png)
 
-**Execução bem-sucedida:**
+**Execução bem-sucedida (todos os nós em verde):**
 
 ![Execução](n8n/screenshots/02.png)
 
@@ -39,14 +39,18 @@ Automação & IA | Junho 2026
 
 ![Supabase](n8n/screenshots/03.png)
 
+**Notificação recebida no webhook.site:**
+
+![Webhook Notification](n8n/screenshots/04.png)
+
 ---
 
 ### O fluxo
 
 ```
 Manual Trigger
-    → Extrair Dados da Tarefa   (Code node — simula payload ClickUp)
-    → Gerar Hashtags com Gemini (HTTP Request → Google Gemini API)
+    → Extrair Dados da Tarefa   (Code node — 4 cenários prontos para teste)
+    → Gerar Hashtags com Gemini (HTTP Request → Gemini 2.5 Flash Lite)
     → Processar Resposta da IA  (Code node — normaliza + fallback)
     → Salvar no Supabase        (HTTP Request → REST API Supabase)
     → Notificação               (HTTP Request → webhook compatível Slack)
@@ -54,17 +58,24 @@ Manual Trigger
 
 Os dados fluem de ponta a ponta: a legenda entra no primeiro nó e a notificação final carrega as hashtags geradas, o cliente, a data e o task_id — tudo rastreável.
 
+### Cenários de teste disponíveis
+
+O nó **"Extrair Dados da Tarefa"** contém 4 cenários prontos. Para trocar, altere `CENARIO_ATIVO` no código do nó:
+
+| Cenário | Especialidade | Tipo de conteúdo |
+|---------|--------------|-----------------|
+| `cardiologia_feed` | Cardiologia | Feed |
+| `odontologia_reels` | Odontologia | Reels |
+| `advocacia_carrossel` | Direito Tributário | Carrossel |
+| `psicologia_stories` | Psicologia | Stories |
+
 ---
 
 ### Decisões técnicas
 
-**Por que Manual Trigger em vez de Webhook Trigger?**
+**Por que Manual Trigger?**
 
-Contexto: não tenho conta no ClickUp para configurar automações reais. O desafio permite explicitamente simular o trigger.
-
-Tentativa: o nó Webhook Trigger foi configurado inicialmente — o payload e a lógica de parsing dos `custom_fields` estão documentados no código do nó "Extrair Dados". O comentário mostra exatamente como seria em produção.
-
-Próximo passo: em produção, trocar o Manual Trigger pelo Webhook Trigger. Configurar no ClickUp: Automações → Quando status muda para "aprovado" → HTTP Request → URL do N8N.
+O desafio permite explicitamente: *"Se não tiver conta no ClickUp, use um webhook manual como trigger e simule o payload."* O nó "Extrair Dados" contém 4 cenários prontos (cardiologia, odontologia, advocacia, psicologia) — basta trocar `CENARIO_ATIVO` para testar cada um. O comentário no mesmo nó mostra o código exato para quando o Webhook Trigger real do ClickUp estiver conectado.
 
 ---
 
@@ -74,7 +85,7 @@ Contexto: o plano Pro da Anthropic (Claude) não inclui acesso à API — são p
 
 Tentativa: tentei usar a API da Anthropic primeiro. Descobri durante a implementação que Claude Pro não é equivalente a uma API key.
 
-Resultado: Google Gemini 2.0 Flash Lite via Google AI Studio — gratuito, sem cartão de crédito, com suporte completo a `generateContent`. O modelo é mais que suficiente para geração de hashtags.
+Resultado: Google Gemini 2.5 Flash Lite via Google AI Studio — gratuito, sem cartão de crédito, com suporte completo a `generateContent`. O modelo é mais que suficiente para geração de hashtags.
 
 Próximo passo: em produção, o provedor de IA poderia ser configurável via variável de ambiente (`AI_PROVIDER=gemini|openai|anthropic`), trocando apenas o nó HTTP Request.
 
@@ -87,6 +98,12 @@ Contexto: o campo `full_caption` contém quebras de linha (`\n`). Quando interpo
 Tentativa: tentei com JSON body e o N8N retornou erro "Bad control character in string at position 544". Diagnosticado pelo erro que apontava exatamente para o campo com newline.
 
 Resultado: modo "Using Fields Below" (`keypair`) — o N8N serializa cada campo individualmente e faz o escape automaticamente.
+
+---
+
+**Por que o prompt tem seção PROIBIDO?**
+
+Prompts sem restrições explícitas podem gerar alucinações (hashtags inventadas), vazar dados do contexto (a legenda pode conter informações do cliente), ou produzir conteúdo que viola as diretrizes do Instagram ou regulamentos do CFM/CFO. O prompt inclui: lista de proibições, regras de formato obrigatório, e instrução de qualidade (mix de alta/baixa competição) para resultado mais útil. A `temperature` foi reduzida de 0.7 para 0.4 — menos criatividade, mais previsibilidade e consistência no formato de saída.
 
 ---
 
@@ -210,7 +227,15 @@ python main.py
 # python main.py
 ```
 
-O script roda 5 casos de teste automaticamente: 2 válidos, 3 com diferentes tipos de erro.
+O script roda 9 casos de teste automaticamente:
+
+| # | Tipo | Descrição |
+|---|------|-----------|
+| 1–5 | Válidos | Cardiologia, Odontologia, Advocacia, Psicologia, Dermatologia — diferentes formatos de telefone e e-mail |
+| 6 | Falha esperada | Múltiplos campos obrigatórios ausentes |
+| 7 | Falha esperada | Telefone com dígitos insuficientes |
+| 8 | Falha esperada | E-mail malformado (sem domínio) |
+| 9 | Falha esperada | Telefone e e-mail inválidos simultaneamente (fail-all) |
 
 ---
 
