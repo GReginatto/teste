@@ -316,13 +316,13 @@ Resultado: troquei o modo do nó Supabase de `specifyBody: "json"` para `specify
 
 ---
 
-**Rate limit 429 — free tier do Gemini esgotado**
+**Rate limit 429 free tier do Gemini esgotado**
 
 Contexto: durante os testes iterativos do workflow, o Gemini retornou 429 após algumas execuções seguidas.
 
 Tentativa: achei que havia configurado a API key errada ou estava usando o tier errado.
 
-Resultado: o free tier tem 15 RPM (requisições por minuto) — não é por dia, é por minuto. Aguardar 60 segundos resolveu. Isso reforçou a decisão de implementar o fallback de hashtags no nó "Processar Resposta da IA": se o rate limit for atingido em produção, o fluxo não para.
+Resultado: o free tier tem 15 RPM (requisições por minuto) não é por dia, é por minuto. Aguardar 60 segundos resolveu. Isso reforçou a decisão de implementar o fallback de hashtags no nó "Processar Resposta da IA": se o rate limit for atingido em produção, o fluxo não para.
 
 ---
 
@@ -332,11 +332,11 @@ Resultado: o free tier tem 15 RPM (requisições por minuto) — não é por dia
 
 **Retry com backoff no nó Gemini**
 
-O free tier do Gemini tem limite de 15 RPM. Em pico de aprovações simultâneas, o nó vai falhar com 429. O N8N HTTP Request suporta retry nativo — configuraria 3 tentativas com intervalo exponencial (1s, 4s, 16s) antes de acionar o fallback de hashtags.
+O free tier do Gemini tem limite de 15 RPM. Em pico de aprovações simultâneas, o nó vai falhar com 429. O N8N HTTP Request suporta retry nativo configuraria 3 tentativas com intervalo exponencial (1s, 4s, 16s) antes de acionar o fallback de hashtags.
 
 **Segurança no Supabase (RLS)**
 
-Desabilitei o Row Level Security para simplificar o desenvolvimento. Em produção, usaria a `service_role key` no servidor (nunca exposta no cliente) com RLS habilitado — e criaria policies para permitir apenas `INSERT` na tabela `postagens` via essa key.
+Desabilitei o Row Level Security para simplificar o desenvolvimento. Em produção, usaria a `service_role key` no servidor (nunca exposta no cliente) com RLS habilitado e criaria policies para permitir apenas `INSERT` na tabela `postagens` via essa key.
 
 ---
 
@@ -355,7 +355,7 @@ Os 9 casos em `CASOS` são testes manuais. Migraria para pytest com:
 
 **Fila para o ClickUp**
 
-A criação de tarefa no ClickUp é a etapa mais frágil: API externa, timeout, rate limit. Em produção, moveria para uma fila de background (Celery + Redis ou ARQ). O endpoint responderia imediatamente com `202 Accepted` e o ClickUp seria chamado de forma assíncrona — com retry automático em caso de falha.
+A criação de tarefa no ClickUp é a etapa mais frágil: API externa, timeout, rate limit. Em produção, moveria para uma fila de background (Celery + Redis ou ARQ). O endpoint responderia imediatamente com `202 Accepted` e o ClickUp seria chamado de forma assíncrona com retry automático em caso de falha.
 
 ---
 
