@@ -45,7 +45,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [680, 300],
-      "notes": "Google Gemini 2.0 Flash Lite — tier gratuito (aistudio.google.com). Configure GEMINI_API_KEY como variável de ambiente antes de iniciar o N8N. Modelo escolhido por ser o mais leve do tier gratuito com suporte a generateContent."
+      "notes": "Google Gemini 2.5 Flash Lite — tier gratuito (aistudio.google.com). Configure GEMINI_API_KEY como variável de ambiente antes de iniciar o N8N. Modelo escolhido por ser o mais leve do tier gratuito com suporte a generateContent."
     },
     {
       "parameters": {

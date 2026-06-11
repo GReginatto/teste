@@ -25,6 +25,24 @@ Automação & IA | Junho 2026
 
 ---
 
+## Como os dois desafios se conectam
+
+Os dois desafios não são independentes — são dois pontos da mesma esteira de produto.
+
+O formulário do Desafio 2 captura o profissional: nome, especialidade, principal desafio de marketing. Esse lead vira tarefa no ClickUp. Quando a equipe aprova uma postagem para esse cliente, o evento dispara o workflow do Desafio 1, que gera hashtags personalizadas para aquela especialidade e persiste tudo no Supabase.
+
+A Dra. Ana Lima (lead_id 6 na tabela `leads`, especialidade: Odontologia) tem uma postagem diretamente correspondente no Desafio 1: `TASK_002 — Reels - Dra. Ana Odonto`. O campo `cliente` no N8N e o campo `especialidade` no Python são o mesmo profissional visto por dois sistemas diferentes.
+
+```
+Formulário web       →  main.py valida + salva leads  →  ClickUp (tarefa criada)
+                                                               ↓
+                                          N8N detecta "aprovado" → Gemini gera hashtags
+                                                               ↓
+                                                    Supabase (postagens) + Notificação
+```
+
+---
+
 ## Desafio 1 — Orquestração com N8N
 
 ### Screenshots
@@ -246,6 +264,42 @@ O script roda 9 casos de teste automaticamente:
 | 7 | Falha esperada | Telefone com dígitos insuficientes |
 | 8 | Falha esperada | E-mail malformado (sem domínio) |
 | 9 | Falha esperada | Telefone e e-mail inválidos simultaneamente (fail-all) |
+
+---
+
+## Problemas encontrados e resolvidos
+
+Documentar o que não funcionou é tão importante quanto mostrar o que funcionou.
+
+---
+
+**Modelo Gemini depreciado — `gemini-1.5-flash` não encontrado**
+
+Contexto: configurei o workflow com `gemini-1.5-flash`, modelo que aparecia na documentação antiga. Ao executar, o N8N retornou 404 com "model not found".
+
+Tentativa: chamei o endpoint `ListModels` da API do Google para listar os modelos disponíveis no tier gratuito atualizado.
+
+Resultado: descobri que `gemini-2.0-flash-lite` e `gemini-2.5-flash-lite` estavam disponíveis. Escolhi o `2.5-flash-lite` por ser mais recente sem custo adicional. Isso também revelou que a documentação de terceiros sobre o Gemini costuma estar desatualizada — sempre verificar via ListModels.
+
+---
+
+**JSON inválido no nó Supabase — caractere de controle na posição 544**
+
+Contexto: o campo `full_caption` concatena a legenda com as hashtags usando `\n`. Ao usar o modo "JSON body" com template `{{ $json.full_caption }}`, o N8N interpolava o valor sem escapar as quebras de linha, gerando JSON malformado.
+
+Tentativa: o erro `Bad control character in string at position 544` apontava exatamente para o campo com newline. Tentei usar `JSON.stringify()` no Code node para pré-serializar — funcionou, mas ficou frágil.
+
+Resultado: troquei o modo do nó Supabase de `specifyBody: "json"` para `specifyBody: "keypair"` (Using Fields Below). Nesse modo, o N8N serializa cada campo individualmente e faz o escape automaticamente. Mais robusto e sem código extra.
+
+---
+
+**Rate limit 429 — free tier do Gemini esgotado**
+
+Contexto: durante os testes iterativos do workflow, o Gemini retornou 429 após algumas execuções seguidas.
+
+Tentativa: achei que havia configurado a API key errada ou estava usando o tier errado.
+
+Resultado: o free tier tem 15 RPM (requisições por minuto) — não é por dia, é por minuto. Aguardar 60 segundos resolveu. Isso reforçou a decisão de implementar o fallback de hashtags no nó "Processar Resposta da IA": se o rate limit for atingido em produção, o fluxo não para.
 
 ---
 

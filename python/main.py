@@ -330,9 +330,10 @@ CASOS = [
 
 if __name__ == "__main__":
     for caso in CASOS:
-        desc = caso.pop("_desc")
+        desc = caso.get("_desc", "")
+        dados = {k: v for k, v in caso.items() if k != "_desc"}
         print(f"\n{'=' * 60}")
         print(f"TESTE: {desc}")
         print("=" * 60)
-        resultado = processar_formulario(caso)
+        resultado = processar_formulario(dados)
         print(f"RESULTADO:\n{json.dumps(resultado, ensure_ascii=False, indent=2)}")
